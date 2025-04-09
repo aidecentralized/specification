@@ -43,9 +43,319 @@ export interface Request {
        */
       progressToken?: ProgressToken;
     };
+    coupon?: Coupon;
     [key: string]: unknown;
   };
 }
+
+/**
+ * A certificate is a verifiable token that binds an identity to a public key.
+ * It is issued by a certification authority and can be used to establish trust
+ * between parties. The certificate follows X.509 standards and contains
+ * information about the subject, issuer, validity period, and cryptographic details.
+ */
+export interface Certificate {
+  /**
+   * Unique serial number assigned by the issuing CA.
+   * Used for certificate revocation and identification.
+   */
+  serialNumber: string;
+
+  /**
+   * The issuer of the certificate (the CA).
+   * Represented as an X.500 Distinguished Name.
+   */
+  issuer: DistinguishedName;
+
+  /**
+   * The subject (recipient/owner) of the certificate.
+   * Represented as an X.500 Distinguished Name.
+   */
+  subject: DistinguishedName;
+
+  /**
+   * The date and time when the certificate was issued.
+   * This is a string in ISO 8601 format.
+   * @format date-time
+   */
+  issuedAt: string;
+
+  /**
+   * The date and time when the certificate expires.
+   * This is a string in ISO 8601 format.
+   * @format date-time
+   */
+  expiresAt: string;
+
+  /**
+   * The public key belonging to the subject (recipient).
+   * This is a string in PEM format.
+   * @format pem
+   */
+  subjectPublicKey: string;
+
+  /**
+   * The algorithm used for the subject's public key.
+   * E.g., "RSA", "ECDSA", "Ed25519"
+   */
+  publicKeyAlgorithm: string;
+
+  /**
+   * Key usage constraints (e.g., "digitalSignature", "keyEncipherment")
+   * Specifies the permitted uses of the certificate's public key.
+   */
+  keyUsage: string[];
+
+  /**
+   * Extended key usage (e.g., "serverAuth", "clientAuth")
+   * Specifies the purposes for which the certificate can be used.
+   */
+  extendedKeyUsage?: string[];
+
+  /**
+   * URL where certificate revocation information can be checked.
+   */
+  crlDistributionPoint?: string;
+
+  /**
+   * URL for Online Certificate Status Protocol (OCSP) checking.
+   */
+  ocspUrl?: string;
+
+  /**
+   * Digital signature created by the issuer's private key.
+   * Signs the TBSCertificate (To-Be-Signed Certificate) portion.
+   * This is a string in base64 format.
+   * @format base64
+   */
+  signature: string;
+
+  /**
+   * The algorithm used to create the signature.
+   * E.g., "SHA256withRSA", "SHA384withECDSA"
+   */
+  signatureAlgorithm: string;
+
+  /**
+   * Version of the X.509 standard used (typically "3").
+   */
+  version: string;
+}
+
+/**
+ * X.500 Distinguished Name structure for identifying entities.
+ */
+export interface DistinguishedName {
+  commonName: string;           // CN
+  organization?: string;        // O
+  organizationalUnit?: string;  // OU
+  locality?: string;            // L
+  state?: string;               // ST
+  country?: string;             // C
+  emailAddress?: string;        // E
+}
+
+/**
+ * A coupon is a verifiable token from a service requester to a service provider.
+ * It establishes the legitimacy of the request and the identity of the requester.
+ * The coupon can be used by the service provider to verify the request and potentially
+ * gain reputation by demonstrating legitimate traffic.
+ */
+export interface Coupon {
+  /**
+   * Unique identifier for the coupon.
+   */
+  id: string;
+
+  /**
+   * The issuer of the coupon (service requester).
+   * Represented as an X.500 Distinguished Name.
+   */
+  issuer: DistinguishedName;
+
+  /**
+   * The recipient of the coupon (service provider).
+   * Represented as an X.500 Distinguished Name.
+   */
+  recipient: DistinguishedName;
+
+  /**
+   * The date and time when the coupon was issued.
+   * This is a string in ISO 8601 format.
+   * @format date-time
+   */
+  issuedAt: string;
+
+  /**
+   * The date and time when the coupon expires (optional).
+   * This is a string in ISO 8601 format.
+   * @format date-time
+   */
+  expiresAt?: string;
+
+  /**
+   * Certificate of the issuer.
+   * This certificate establishes the identity of the issuer.
+   */
+  issuerCertificate: Certificate;
+
+  /**
+   * Version of the protocol used to create the coupon.
+   * This is a string in the format YYYY-MM-DD.
+   * @format date
+   */
+  protocolVersion: string;
+
+  /**
+   * Additional data associated with this coupon.
+   * Can include purpose, permissions, or other context.
+   */
+  data?: Record<string, any>;
+
+  /**
+   * Digital signature created by the issuer's private key.
+   * Signs a canonical representation of all the above fields.
+   * This is a string in base64 format.
+   * @format base64
+   */
+  signature: string;
+
+  /**
+   * The algorithm used to create the signature.
+   * Should match the algorithm specified in the issuer's certificate.
+   */
+  signatureAlgorithm: string;
+
+  /**
+   * Description of the canonical format used for creating the signature.
+   * E.g., "JSON-canonicalize + SHA256"
+   */
+  canonicalizationMethod: string;
+}
+
+/**
+ * Optional: Certificate Chain to support hierarchical PKI
+ */
+export interface CertificateChain {
+  /**
+   * The end-entity (leaf) certificate.
+   */
+  endEntityCertificate: Certificate;
+
+  /**
+   * Array of intermediate CA certificates (if any).
+   * Should be in order from the certificate that signed the end-entity
+   * certificate up to (but not including) the root certificate.
+   */
+  intermediateCertificates: Certificate[];
+
+  /**
+   * The root certificate (optional).
+   * Usually, root certificates are distributed out-of-band and
+   * pre-installed in trust stores.
+   */
+  rootCertificate?: Certificate;
+}
+
+/**
+ * The ServerRegistrationRequest is part of the Nanda Registry Protocol. This allows the servers to register as part of the Nanda SDK
+ * and obtain a unique ID and certification. This is used to establish legitimacy and trust between a web of nodes of servers and clients.
+ */
+export type ServerRegistrationRequest = {
+  name: string;
+  slug?: string;
+  description: string;
+  provider: string;
+  url: string;
+  documentation_url?: string;
+  types?: Array<"agent" | "resource" | "tool">;
+  tags?: string[];
+  logo?: File | Blob;
+  capabilities?: Array<ServerCapabilityRequest>;
+  protocols?: string[];
+  usage_requirements?: UsageRequirementsRequest;
+  contact_email: string;
+};
+
+export type ServerCapabilityRequest = {
+  name: string;
+  description: string;
+  type: "agent" | "resource" | "tool";
+  parameters?: Array<CapabilityParameterRequest>;
+  examples?: string[];
+};
+
+export type CapabilityParameterRequest = {
+  name: string;
+  description: string;
+  type: string;
+  required?: boolean;
+  default?: string | null;
+};
+
+export type UsageRequirementsRequest = {
+  authentication_required?: boolean;
+  authentication_type?: "none" | "api_key" | "oauth2" | "jwt" | "other";
+  rate_limits?: string | null;
+  pricing?: string | null;
+};
+
+export type ServerRegistrationResponse = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  provider: string;
+  url: string;
+  documentation_url?: string;
+  types?: Array<"agent" | "resource" | "tool">;
+  tags?: string[];
+  logo?: string;
+  capabilities?: Array<ServerCapability>;
+  protocols?: string[];
+  usage_requirements?: UsageRequirements;
+};
+
+export type ServerCapability = {
+  name: string;
+  description: string;
+  type: "agent" | "resource" | "tool";
+  parameters?: Array<CapabilityParameter>;
+  examples?: string[];
+};
+
+export type CapabilityParameter = {
+  name: string;
+  description: string;
+  type: string;
+  required?: boolean;
+  default?: string | null;
+};
+
+export type UsageRequirements = {
+  authentication_required?: boolean;
+  authentication_type?: "none" | "api_key" | "oauth2" | "jwt" | "other";
+  rate_limits?: string | null;
+  pricing?: string | null;
+};
+
+export type RegistrationStatus = {
+  status: "unregistered" | "registered" | "failed";
+  serverId?: string;
+  lastChecked: Date | null;
+  error?: string;
+};
+
+export type RegistryOptions = {
+  /** Registry server URL */
+  registryUrl?: string;
+
+  /** API Key for the registry */
+  apiKey?: string;
+
+  /** Additional registration parameters */
+  registration?: Partial<ServerRegistrationRequest>;
+};
 
 export interface Notification {
   method: string;
